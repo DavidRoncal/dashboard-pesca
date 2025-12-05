@@ -212,7 +212,7 @@ try:
                 st.dataframe(
                     resumen_lote.style.format({
                         "Total Kilos": "{:,.1f}",
-                        "Total Toneladas": "{:,.1f}",
+                        "Total Toneladas": "{:,.2f}",
                         "Total Bandejas": "{:,.0f}"
                     }), 
                     width="stretch",
@@ -239,5 +239,6 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
