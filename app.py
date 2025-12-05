@@ -96,6 +96,15 @@ try:
         df_raw['Fecha_Filtro'] = df_raw['Marca temporal'].dt.date
         df_raw['Bandejas'] = pd.to_numeric(df_raw['Bandejas'], errors='coerce').fillna(0)
         df_raw['Lote'] = df_raw['Lote'].astype(str)
+        
+        # Aseguramos que Calidad y Calibre sean texto para que el gráfico no falle
+        # (Si no existen las columnas, Pandas las creará vacías para evitar error)
+        if 'Calidad' not in df_raw.columns: df_raw['Calidad'] = "S/D"
+        if 'Calibre' not in df_raw.columns: df_raw['Calibre'] = "S/D"
+        
+        df_raw['Calidad'] = df_raw['Calidad'].astype(str)
+        df_raw['Calibre'] = df_raw['Calibre'].astype(str)
+
 
         # --- BARRA LATERAL ---
         st.sidebar.header("📅 Configuración")
@@ -198,8 +207,77 @@ try:
                 st.plotly_chart(fig_lote, use_container_width=True)
 
             st.markdown("---")
+            
+            # --- 3. GRÁFICOS SOLARES POR LOTE (AJUSTADO) ---
+            st.subheader("🔍 Desglose Multidimensional")
+            # Texto corregido para ser más genérico
+            st.info("💡 Cada gráfico representa un Lote. Los anillos se generan en el orden que configures en el menú de la izquierda.")
+            
+            col_sun_config, col_sun_graf = st.columns([1, 4])
+            
+            with col_sun_config:
+                st.markdown("**Configuración:**")
+                
+                # 1. Selector de Jerarquía (Anillos)
+                columnas_disponibles = ['Producto', 'Calidad', 'Calibre', 'Cuadrilla']
+                columnas_reales = [c for c in columnas_disponibles if c in df_filtrado.columns]
+                
+                path_seleccionado = st.multiselect(
+                    "Jerarquía (Anillos):",
+                    options=columnas_reales,
+                    default=['Producto', 'Calidad', 'Calibre']
+                )
+                
+                st.markdown("---")
+                
+                # 2. Selector de Lotes a mostrar
+                lotes_activos = sorted(df_filtrado['Lote'].unique())
+                lotes_seleccionados = st.multiselect(
+                    "Lotes visibles:",
+                    options=lotes_activos,
+                    default=lotes_activos
+                )
+            
+            with col_sun_graf:
+                if path_seleccionado and lotes_seleccionados:
+                    # AJUSTE DE DISEÑO:
+                    # Si hay solo 1 lote, usamos 1 columna para que no quede espacio vacío feo.
+                    # Si hay más, usamos 2 columnas.
+                    num_cols = 1 if len(lotes_seleccionados) == 1 else 2
+                    cols = st.columns(num_cols)
+                    
+                    for i, lote in enumerate(lotes_seleccionados):
+                        # Asignamos a la columna correspondiente
+                        with cols[i % num_cols]:
+                            # Filtramos datos solo de este lote
+                            df_lote = df_filtrado[df_filtrado['Lote'] == lote]
+                            total_lote = df_lote['Toneladas Calc'].sum()
+                            
+                            fig_sun = px.sunburst(
+                                df_lote,
+                                path=path_seleccionado,
+                                values='Toneladas Calc',
+                                color='Producto', 
+                                color_discrete_sequence=px.colors.qualitative.Pastel,
+                                title=f"<b>Lote {lote}</b><br>Total: {total_lote:.2f} t",
+                                branchvalues="total"
+                            )
+                            fig_sun.update_layout(
+                                margin=dict(t=50, l=0, r=0, b=0),
+                                font=dict(family="Arial", size=14),
+                                height=450 if num_cols == 1 else 350 # Hacemos el gráfico un poco más alto si está solo
+                            )
+                            st.plotly_chart(fig_sun, use_container_width=True)
+                            
+                elif not path_seleccionado:
+                    st.warning("⚠️ Selecciona al menos una categoría para la jerarquía.")
+                elif not lotes_seleccionados:
+                    st.warning("⚠️ Selecciona al menos un Lote para visualizar.")
 
-            # --- 3. TABLAS DE DETALLE (LOTE Y CUADRILLA) ---
+
+            st.markdown("---")
+
+            # --- 4. TABLAS DE DETALLE ---
             st.subheader("📋 Tablas de Detalle")
             
             col_tabla1, col_tabla2 = st.columns(2)
@@ -212,7 +290,7 @@ try:
                 st.dataframe(
                     resumen_lote.style.format({
                         "Total Kilos": "{:,.1f}",
-                        "Total Toneladas": "{:,.2f}",
+                        "Total Toneladas": "{:,.1f}",
                         "Total Bandejas": "{:,.0f}"
                     }), 
                     width="stretch",
@@ -239,6 +317,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
