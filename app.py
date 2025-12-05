@@ -122,7 +122,6 @@ try:
             st.markdown("### 📊 Métricas Clave")
             col_fecha, col1, col2, col3, col4 = st.columns(5)
             
-            # Usamos emojis estándar en texto plano
             col_fecha.metric("Fecha Reporte", f"{fecha_seleccionada.strftime('%d/%m/%Y')} 🗓️")
             col1.metric("Total Bandejas", f"{df_filtrado['Bandejas'].sum():,.0f} 📦")
             col2.metric("Total Toneladas", f"{df_filtrado['Toneladas Calc'].sum():,.2f} t ⚖️")
@@ -146,7 +145,6 @@ try:
             fig_timeline.update_xaxes(tickformat="%H:%M", title_text="<b>Hora del Día</b>")
             fig_timeline.update_yaxes(title_text="<b>Cuadrilla</b>")
             
-            # CORRECCIÓN: Volvemos a use_container_width=True para gráficos Plotly
             st.plotly_chart(estilo_grafico(fig_timeline), use_container_width=True)
 
             st.markdown("---")
@@ -175,7 +173,6 @@ try:
                 fig_cuadrilla = estilo_grafico(fig_cuadrilla)
                 fig_cuadrilla.update_traces(textposition='outside', cliponaxis=False)
                 
-                # CORRECCIÓN: Volvemos a use_container_width=True para gráficos Plotly
                 st.plotly_chart(fig_cuadrilla, use_container_width=True)
                 
             with col_graf2:
@@ -198,30 +195,49 @@ try:
                 fig_lote = estilo_grafico(fig_lote)
                 fig_lote.update_traces(textposition='outside', cliponaxis=False)
                 
-                # CORRECCIÓN: Volvemos a use_container_width=True para gráficos Plotly
                 st.plotly_chart(fig_lote, use_container_width=True)
 
             st.markdown("---")
 
-            # --- 3. TABLA RESUMEN ---
-            st.subheader("📋 Detalle por Lote")
-            resumen = df_filtrado.groupby('Lote')[['Bandejas', 'Kilos Calc', 'Toneladas Calc']].sum().reset_index()
-            resumen.columns = ['Lote', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
+            # --- 3. TABLAS DE DETALLE (LOTE Y CUADRILLA) ---
+            st.subheader("📋 Tablas de Detalle")
             
-            # CORRECCIÓN: Mantenemos width="stretch" AQUÍ porque es st.dataframe (Tabla)
-            st.dataframe(
-                resumen.style.format({
-                    "Total Kilos": "{:,.1f}",
-                    "Total Toneladas": "{:,.2f}",
-                    "Total Bandejas": "{:,.0f}"
-                }), 
-                width="stretch",
-                hide_index=True
-            )
+            col_tabla1, col_tabla2 = st.columns(2)
+
+            with col_tabla1:
+                st.markdown("##### 📦 Resumen por Lote")
+                resumen_lote = df_filtrado.groupby('Lote')[['Bandejas', 'Kilos Calc', 'Toneladas Calc']].sum().reset_index()
+                resumen_lote.columns = ['Lote', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
+                
+                st.dataframe(
+                    resumen_lote.style.format({
+                        "Total Kilos": "{:,.1f}",
+                        "Total Toneladas": "{:,.1f}",
+                        "Total Bandejas": "{:,.0f}"
+                    }), 
+                    width="stretch",
+                    hide_index=True
+                )
+
+            with col_tabla2:
+                st.markdown("##### 👷 Resumen por Cuadrilla")
+                resumen_cuadrilla = df_filtrado.groupby('Cuadrilla')[['Bandejas', 'Kilos Calc', 'Toneladas Calc']].sum().reset_index()
+                resumen_cuadrilla.columns = ['Cuadrilla', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
+                
+                st.dataframe(
+                    resumen_cuadrilla.style.format({
+                        "Total Kilos": "{:,.1f}",
+                        "Total Toneladas": "{:,.2f}",
+                        "Total Bandejas": "{:,.0f}"
+                    }), 
+                    width="stretch",
+                    hide_index=True
+                )
 
     else:
         st.error("❌ No hay datos cargados.")
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
