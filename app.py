@@ -125,7 +125,7 @@ try:
             # Usamos emojis estándar en texto plano
             col_fecha.metric("Fecha Reporte", f"{fecha_seleccionada.strftime('%d/%m/%Y')} 🗓️")
             col1.metric("Total Bandejas", f"{df_filtrado['Bandejas'].sum():,.0f} 📦")
-            col2.metric("Total Toneladas", f"{df_filtrado['Toneladas Calc'].sum():,.1f} t ⚖️")
+            col2.metric("Total Toneladas", f"{df_filtrado['Toneladas Calc'].sum():,.2f} t ⚖️")
             col3.metric("Lotes", f"{df_filtrado['Lote'].nunique()} 🏷️")
             col4.metric("Cuadrillas", f"{df_filtrado['Cuadrilla'].nunique()} 👷")
              
@@ -212,7 +212,7 @@ try:
             st.dataframe(
                 resumen.style.format({
                     "Total Kilos": "{:,.1f}",
-                    "Total Toneladas": "{:,.1f}",
+                    "Total Toneladas": "{:,.2f}",
                     "Total Bandejas": "{:,.0f}"
                 }), 
                 width="stretch",
@@ -224,3 +224,4 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
