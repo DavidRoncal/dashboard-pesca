@@ -169,11 +169,10 @@ try:
                     df_filtrado.sort_values("Marca temporal"),
                     x="Marca temporal",
                     y="Cuadrilla",
-                    # size="Bandejas", <-- ELIMINADO para uniformidad
                     color="Producto",
                     hover_data=["Lote", "Bandejas", "Kilos Calc"],
                     color_discrete_sequence=px.colors.qualitative.Bold,
-                    height=400
+                    height=450 # Un poco más de altura para la leyenda
                 )
                 
                 # Fijamos un tamaño de marcador visible y limpio
@@ -182,7 +181,22 @@ try:
                 fig_timeline.update_xaxes(tickformat="%H:%M", title_text="<b>Hora del Día</b>")
                 fig_timeline.update_yaxes(title_text="<b>Cuadrilla</b>")
                 
-                st.plotly_chart(estilo_grafico(fig_timeline), use_container_width=True)
+                # --- APLICAMOS ESTILO Y LUEGO FORZAMOS LEYENDA ABAJO SIN TÍTULO ---
+                fig_timeline = estilo_grafico(fig_timeline)
+                
+                fig_timeline.update_layout(
+                    legend=dict(
+                        orientation="h",       # Horizontal
+                        yanchor="top",
+                        y=-0.25,               # Posición debajo del eje X (ajustable)
+                        xanchor="center",
+                        x=0.5,                 # Centrado
+                        title=None             # <--- SIN TÍTULO EN LEYENDA
+                    ),
+                    margin=dict(b=100)         # Margen inferior extra para que quepa la leyenda
+                )
+                
+                st.plotly_chart(fig_timeline, use_container_width=True)
                 st.markdown("---")
                 
                 # Barras
@@ -334,6 +348,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
