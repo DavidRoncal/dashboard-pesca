@@ -76,10 +76,17 @@ def conectar_google_sheets():
 def cargar_datos():
     client = conectar_google_sheets()
     sheet = client.open("Base de datos").worksheet("Respuestas de formulario 2")
-    data = sheet.get_all_records()
+    
+    # Usamos get_all_values() para traer todo como texto puro y respetar ceros originales
+    data = sheet.get_all_values()
+    
     if not data:
         return pd.DataFrame()
-    return pd.DataFrame(data)
+        
+    headers = data[0]
+    rows = data[1:]
+    
+    return pd.DataFrame(rows, columns=headers)
 
 try:
     df_raw = cargar_datos()
@@ -89,21 +96,19 @@ try:
         df_raw['Marca temporal'] = pd.to_datetime(df_raw['Marca temporal'], dayfirst=True, errors='coerce')
         df_raw['Fecha_Filtro'] = df_raw['Marca temporal'].dt.date
         
-        # Limpieza robusta de números
+        # Convertimos números
         df_raw['Bandejas'] = pd.to_numeric(df_raw['Bandejas'], errors='coerce').fillna(0)
         
-        # --- CORRECCIÓN IMPORTANTE: Lotes como Texto ---
-        # Convertimos explícitamente a string para mantener "0018"
-        df_raw['Lote'] = df_raw['Lote'].astype(str)
+        # --- LOTE: SIN RELLENO, SOLO LIMPIEZA ---
+        df_raw['Lote'] = df_raw['Lote'].astype(str).str.strip()
         
-        # Aseguramos columnas de texto
         if 'Calidad' not in df_raw.columns: df_raw['Calidad'] = "S/D"
         if 'Calibre' not in df_raw.columns: df_raw['Calibre'] = "S/D"
         
         df_raw['Calidad'] = df_raw['Calidad'].astype(str)
         df_raw['Calibre'] = df_raw['Calibre'].astype(str)
 
-        # --- CÁLCULO DE FECHA PERÚ ---
+        # --- FECHA PERÚ ---
         zona_peru = pytz.timezone('America/Lima')
         hoy_peru = datetime.now(zona_peru).date()
 
@@ -199,7 +204,11 @@ try:
                     color_discrete_sequence=paleta,
                     text_auto=formato_etiqueta
                 )
-                fig_lote.update_layout(xaxis_title="<b>N° Lote</b>")
+                
+                # --- SOLUCIÓN AL GRÁFICO ---
+                # Forzamos que el eje X sea de tipo 'category' (texto) y no numérico.
+                # Esto evita que Plotly convierta "0020" en 20.
+                fig_lote.update_xaxes(type='category', title="<b>N° Lote</b>")
                 
                 fig_lote = estilo_grafico(fig_lote)
                 fig_lote.update_traces(textposition='outside', cliponaxis=False)
@@ -207,9 +216,9 @@ try:
 
             st.markdown("---")
             
-            # --- 3. GRÁFICOS SOLARES POR LOTE ---
+            # --- 3. GRÁFICOS SOLARES ---
             st.subheader("🔍 Desglose Multidimensional")
-            st.info("💡 Cada gráfico representa un Lote. Los anillos se generan en el orden que configures en el menú de la izquierda.")
+            st.info("💡 Cada gráfico representa un Lote.")
             
             col_sun_config, col_sun_graf = st.columns([1, 4])
             
@@ -265,17 +274,15 @@ try:
 
             st.markdown("---")
 
-            # --- 4. TABLAS DE DETALLE (CORREGIDO EL ERROR DE TIPO STR/INT) ---
+            # --- 4. TABLAS DE DETALLE ---
             st.subheader("📋 Tablas de Detalle")
             
             col_tabla1, col_tabla2 = st.columns(2)
 
-            # Usamos column_config en lugar de style.format para evitar errores con "0018"
             config_tablas = {
                 "Total Kilos": st.column_config.NumberColumn(format="%.1f kg"),
                 "Total Toneladas": st.column_config.NumberColumn(format="%.2f t"),
                 "Total Bandejas": st.column_config.NumberColumn(format="%.0f"),
-                # Forzamos que el Lote se muestre como texto para conservar ceros a la izquierda
                 "Lote": st.column_config.TextColumn("N° Lote"),
             }
 
@@ -287,7 +294,7 @@ try:
                 st.dataframe(
                     resumen_lote,
                     column_config=config_tablas,
-                    width=None, # Ajuste automático
+                    width=None,
                     hide_index=True,
                     use_container_width=True
                 )
@@ -297,7 +304,6 @@ try:
                 resumen_cuadrilla = df_filtrado.groupby('Cuadrilla')[['Bandejas', 'Kilos Calc', 'Toneladas Calc']].sum().reset_index()
                 resumen_cuadrilla.columns = ['Cuadrilla', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
                 
-                # Ajustamos la config para Cuadrilla (quitamos Lote)
                 config_cuadrilla = config_tablas.copy()
                 config_cuadrilla.pop("Lote", None) 
                 
@@ -314,6 +320,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
