@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import plotly.express as px
 import json
@@ -22,7 +22,83 @@ st.markdown("""
             font-family: 'Arial Black', sans-serif;
         }
         
-        /* --- ESTILOS MEJORADOS PARA TABS --- */
+        /* =========================================
+           1. HEADER SUPERIOR
+           ========================================= */
+        header[data-testid="stHeader"] {
+            background-color: #004080;
+        }
+        
+        header[data-testid="stHeader"] svg,
+        header[data-testid="stHeader"] button {
+            color: white !important;
+            fill: white !important;
+        }
+
+        /* =========================================
+           2. FLECHA DE BARRA LATERAL CONTRAÍDA
+           ========================================= */
+        /* Aplicamos el estilo blanco SOLO a la flecha de abrir (estado contraído) */
+        
+        /* Usando la clase específica que encontraste */
+        .st-emotion-cache-pd6qx2 {
+            color: white !important;
+            fill: white !important;
+            opacity: 1 !important; /* Opacidad al 100% para que no se vea gris */
+        }
+        
+        /* Refuerzo para el contenedor del control contraído */
+        [data-testid="stSidebarCollapsedControl"] {
+            color: white !important;
+            background-color: #004080 !important; /* Fondo azul para mayor visibilidad */
+            opacity: 1 !important;
+        }
+        
+        [data-testid="stSidebarCollapsedControl"] svg {
+            fill: white !important;
+        }
+
+        /* =========================================
+           3. BARRA LATERAL (SIDEBAR) - ESTILOS GENERALES
+           ========================================= */
+        section[data-testid="stSidebar"] {
+            background-color: #004080;
+        }
+        
+        /* Textos blancos (Títulos y etiquetas) */
+        section[data-testid="stSidebar"] h1, 
+        section[data-testid="stSidebar"] h2, 
+        section[data-testid="stSidebar"] h3, 
+        section[data-testid="stSidebar"] label, 
+        section[data-testid="stSidebar"] span,
+        section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] p {
+            color: white !important;
+        }
+
+        /* INPUTS (Cajas de texto): Texto oscuro para que sea legible */
+        section[data-testid="stSidebar"] input,
+        section[data-testid="stSidebar"] .stSelectbox div,
+        section[data-testid="stSidebar"] .stMultiSelect div {
+            color: #31333F !important;
+        }
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div,
+        section[data-testid="stSidebar"] div[data-baseweb="base-input"] {
+            background-color: white !important;
+            color: #31333F !important;
+        }
+
+        /* =========================================
+           4. TAGS DE MULTISELECT (Fondo negro)
+           ========================================= */
+        .st-c2,
+        span[data-baseweb="tag"] {
+            background-color: rgb(0, 0, 0) !important;
+            color: white !important;
+        }
+
+        /* =========================================
+           5. PESTAÑAS (TABS)
+           ========================================= */
         .stTabs [data-baseweb="tab-list"] {
             gap: 10px;
             border-bottom: 1px solid #d0d7de;
@@ -84,7 +160,7 @@ def estilo_grafico(fig):
     )
     return fig
 
-# --- CONEXIÓN HÍBRIDA (PC / NUBE) ---
+# --- CONEXIÓN HÍBRIDA ---
 @st.cache_resource
 def conectar_google_sheets():
     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -95,7 +171,7 @@ def conectar_google_sheets():
         creds_dict = dict(st.secrets["gcp_service_account"])
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     else:
-        st.error("❌ No se encontraron credenciales (ni archivo local ni secrets).")
+        st.error("❌ No se encontraron credenciales.")
         st.stop()
         
     client = gspread.authorize(credentials)
@@ -134,36 +210,39 @@ try:
 
         # --- BARRA LATERAL ---
         st.sidebar.header("📅 Configuración")
-        fecha_seleccionada = st.sidebar.date_input("Selecciona la Fecha", hoy_peru)
+        fecha_seleccionada = st.sidebar.date_input("Selecciona la Fecha (Diario)", hoy_peru)
+        
         st.sidebar.markdown("---")
         st.sidebar.subheader("⚙️ Conversión")
         kilos_por_bandeja = st.sidebar.number_input("Kg promedio por Bandeja", min_value=0.1, value=10.0, step=0.5, format="%.1f")
+        
+        # Calculamos columnas métricas globales
+        df_raw['Kilos Calc'] = df_raw['Bandejas'] * kilos_por_bandeja
+        df_raw['Toneladas Calc'] = df_raw['Kilos Calc'] / 1000
 
         # --- TABS ---
-        tab_reporte, tab_datos = st.tabs(["Reporte Diario", "Base de Datos"])
+        tab_reporte, tab_historico, tab_datos = st.tabs(["Reporte Diario", "Tendencias Históricas", "Base de Datos"])
 
         # ==============================================================================
         # PESTAÑA 1: REPORTE DIARIO
         # ==============================================================================
         with tab_reporte:
             df_filtrado = df_raw[df_raw['Fecha_Filtro'] == fecha_seleccionada].copy()
-            df_filtrado['Kilos Calc'] = df_filtrado['Bandejas'] * kilos_por_bandeja
-            df_filtrado['Toneladas Calc'] = df_filtrado['Kilos Calc'] / 1000
 
             if df_filtrado.empty:
                 st.warning(f"⚠️ No hay datos para el día: {fecha_seleccionada}")
             else:
                 # KPIs
-                st.markdown("### 📊 Métricas Clave")
+                st.markdown("### 📊 Métricas del Día")
                 col_fecha, col1, col2, col3, col4 = st.columns(5)
-                col_fecha.metric("Fecha Reporte", f"{fecha_seleccionada.strftime('%d/%m/%Y')} 🗓️")
-                col1.metric("Total Bandejas", f"{df_filtrado['Bandejas'].sum():,.0f} 📦")
-                col2.metric("Total Toneladas", f"{df_filtrado['Toneladas Calc'].sum():,.2f} t ⚖️")
+                col_fecha.metric("Fecha", f"{fecha_seleccionada.strftime('%d/%m/%Y')} 🗓️")
+                col1.metric("Bandejas", f"{df_filtrado['Bandejas'].sum():,.0f} 📦")
+                col2.metric("Toneladas", f"{df_filtrado['Toneladas Calc'].sum():,.2f} t ⚖️")
                 col3.metric("Lotes", f"{df_filtrado['Lote'].nunique()} 🏷️")
                 col4.metric("Cuadrillas", f"{df_filtrado['Cuadrilla'].nunique()} 👷")
                 st.markdown("---")
 
-                # --- 1. LÍNEA DE TIEMPO (Scatter Uniforme) ---
+                # Timeline Scatter
                 st.subheader("⏰ Actividad en Tiempo Real")
                 fig_timeline = px.scatter(
                     df_filtrado.sort_values("Marca temporal"),
@@ -172,30 +251,17 @@ try:
                     color="Producto",
                     hover_data=["Lote", "Bandejas", "Kilos Calc"],
                     color_discrete_sequence=px.colors.qualitative.Bold,
-                    height=450 # Un poco más de altura para la leyenda
+                    height=450
                 )
-                
-                # Fijamos un tamaño de marcador visible y limpio
                 fig_timeline.update_traces(marker=dict(size=12, line=dict(width=1, color='DarkSlateGrey')))
-                
                 fig_timeline.update_xaxes(tickformat="%H:%M", title_text="<b>Hora del Día</b>")
                 fig_timeline.update_yaxes(title_text="<b>Cuadrilla</b>")
                 
-                # --- APLICAMOS ESTILO Y LUEGO FORZAMOS LEYENDA ABAJO SIN TÍTULO ---
                 fig_timeline = estilo_grafico(fig_timeline)
-                
                 fig_timeline.update_layout(
-                    legend=dict(
-                        orientation="h",       # Horizontal
-                        yanchor="top",
-                        y=-0.25,               # Posición debajo del eje X (ajustable)
-                        xanchor="center",
-                        x=0.5,                 # Centrado
-                        title=None             # <--- SIN TÍTULO EN LEYENDA
-                    ),
-                    margin=dict(b=100)         # Margen inferior extra para que quepa la leyenda
+                    legend=dict(orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5, title=None),
+                    margin=dict(b=100)
                 )
-                
                 st.plotly_chart(fig_timeline, use_container_width=True)
                 st.markdown("---")
                 
@@ -222,9 +288,7 @@ try:
                 
                 # Sunburst
                 st.subheader("🔍 Desglose Multidimensional")
-                st.info("💡 Cada gráfico representa un Lote.")
                 col_sun_config, col_sun_graf = st.columns([1, 4])
-                
                 with col_sun_config:
                     st.markdown("**Configuración:**")
                     columnas_disponibles = ['Producto', 'Calidad', 'Calibre', 'Cuadrilla']
@@ -233,7 +297,6 @@ try:
                     st.markdown("---")
                     lotes_activos = sorted(df_filtrado['Lote'].unique())
                     lotes_seleccionados = st.multiselect("Lotes visibles:", options=lotes_activos, default=lotes_activos)
-                
                 with col_sun_graf:
                     if path_seleccionado and lotes_seleccionados:
                         num_cols = 1 if len(lotes_seleccionados) == 1 else 2
@@ -252,7 +315,7 @@ try:
 
                 st.markdown("---")
 
-                # Tablas Detalle Global
+                # Tablas Detalle
                 st.subheader("📋 Tablas de Detalle Global")
                 col_tabla1, col_tabla2 = st.columns(2)
                 config_tablas = {
@@ -274,7 +337,6 @@ try:
                     config_cuadrilla = config_tablas.copy(); config_cuadrilla.pop("Lote", None) 
                     st.dataframe(resumen_cuadrilla, column_config=config_cuadrilla, hide_index=True, use_container_width=True)
                 
-                # Detalle por Producto/Lote
                 st.markdown("---")
                 st.subheader("🧩 Detalle de Productos por Lote")
                 lotes_unicos = sorted(df_filtrado['Lote'].unique())
@@ -287,19 +349,75 @@ try:
                             tabla_detalle = df_lote_especifico.groupby(['Producto', 'Calidad', 'Calibre'])[['Toneladas Calc']].sum().reset_index()
                             tabla_detalle.columns = ['Producto', 'Calidad', 'Calibre', 'Total Toneladas']
                             st.dataframe(
-                                tabla_detalle,
-                                column_config={
-                                    "Total Toneladas": st.column_config.NumberColumn(format="%.2f t"),
-                                    "Producto": st.column_config.TextColumn("Producto"),
-                                    "Calidad": st.column_config.TextColumn("Calidad"),
-                                    "Calibre": st.column_config.TextColumn("Calibre"),
-                                },
+                                tabla_detalle, column_config={"Total Toneladas": st.column_config.NumberColumn(format="%.2f t")},
                                 hide_index=True, use_container_width=True
                             )
                             st.markdown("<br>", unsafe_allow_html=True)
 
         # ==============================================================================
-        # PESTAÑA 2: BASE DE DATOS
+        # PESTAÑA 2: TENDENCIAS HISTÓRICAS
+        # ==============================================================================
+        with tab_historico:
+            st.markdown("### 📈 Evolución de la Producción")
+            
+            col_fechas, col_cuadrillas = st.columns(2)
+            
+            with col_fechas:
+                fecha_inicio_def = hoy_peru - timedelta(days=7)
+                rango_fechas = st.date_input(
+                    "Selecciona Rango de Fechas:",
+                    value=(fecha_inicio_def, hoy_peru),
+                    max_value=hoy_peru
+                )
+            
+            with col_cuadrillas:
+                todas_cuadrillas = sorted(df_raw['Cuadrilla'].unique())
+                cuadrillas_seleccionadas = st.multiselect(
+                    "Filtrar por Cuadrillas:",
+                    options=todas_cuadrillas,
+                    default=todas_cuadrillas
+                )
+            
+            if isinstance(rango_fechas, tuple) and len(rango_fechas) == 2:
+                fecha_inicio, fecha_fin = rango_fechas
+                
+                mask_fecha = (df_raw['Fecha_Filtro'] >= fecha_inicio) & (df_raw['Fecha_Filtro'] <= fecha_fin)
+                df_hist = df_raw.loc[mask_fecha].copy()
+                
+                if cuadrillas_seleccionadas:
+                    df_hist = df_hist[df_hist['Cuadrilla'].isin(cuadrillas_seleccionadas)]
+                else:
+                    st.warning("⚠️ Debes seleccionar al menos una cuadrilla.")
+                    df_hist = pd.DataFrame()
+
+                if not df_hist.empty:
+                    st.subheader(f"Producción Total Diaria ({len(cuadrillas_seleccionadas)} cuadrillas seleccionadas)")
+                    
+                    df_evolucion = df_hist.groupby('Fecha_Filtro')[['Toneladas Calc']].sum().reset_index()
+                    
+                    fig_evolucion = px.line(
+                        df_evolucion, 
+                        x='Fecha_Filtro', 
+                        y='Toneladas Calc',
+                        markers=True,
+                        line_shape='spline',
+                        text='Toneladas Calc'
+                    )
+                    fig_evolucion.update_traces(textposition="top center", texttemplate='%{text:.1f} t')
+                    fig_evolucion.update_xaxes(title="Fecha", tickformat="%d/%m")
+                    fig_evolucion.update_yaxes(title="Toneladas")
+                    
+                    st.plotly_chart(estilo_grafico(fig_evolucion), use_container_width=True)
+                    
+                elif cuadrillas_seleccionadas:
+                    st.warning("⚠️ No hay datos en el rango de fechas seleccionado.")
+
+            else:
+                st.info("Selecciona una fecha de inicio y fin para ver el histórico.")
+
+
+        # ==============================================================================
+        # PESTAÑA 3: BASE DE DATOS
         # ==============================================================================
         with tab_datos:
             st.header("Base de Datos de Registros")
@@ -348,6 +466,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
