@@ -92,7 +92,7 @@ st.markdown("""
            ========================================= */
         .st-c2,
         span[data-baseweb="tag"] {
-            background-color: rgb(0 0 0 / 0%) !important; /* Transparente */
+            background-color: #004080 !important; /* Fondo azul para contraste */
             color: white !important;
         }
 
