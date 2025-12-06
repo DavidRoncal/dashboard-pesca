@@ -88,20 +88,25 @@ st.markdown("""
         }
 
         /* =========================================
-           4. TAGS DE MULTISELECT (Fondo negro)
+           4. TAGS DE MULTISELECT (CORRECCIÓN USUARIO)
            ========================================= */
         .st-c2,
         span[data-baseweb="tag"] {
-            background-color: rgb(0, 0, 0) !important;
+            background-color: rgb(0 0 0 / 0%) !important; /* Transparente */
             color: white !important;
         }
 
         /* =========================================
            5. PESTAÑAS (TABS)
            ========================================= */
+        /* Forzamos fondo blanco al contenedor de la lista de tabs para evitar el cuadro negro */
         .stTabs [data-baseweb="tab-list"] {
             gap: 10px;
             border-bottom: 1px solid #d0d7de;
+            background-color: white !important;
+            padding-top: 10px;
+            padding-left: 10px; /* Un poco de margen para que no se pegue al borde */
+            border-radius: 5px 5px 0 0;
         }
         
         .stTabs [data-baseweb="tab"] {
@@ -466,6 +471,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
