@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import date
+from datetime import datetime # <--- CAMBIO: Importamos datetime completo
+import pytz # <--- CAMBIO: Importamos librería de zonas horarias
 import plotly.express as px
 import json
 import os
@@ -97,8 +98,7 @@ try:
         df_raw['Bandejas'] = pd.to_numeric(df_raw['Bandejas'], errors='coerce').fillna(0)
         df_raw['Lote'] = df_raw['Lote'].astype(str)
         
-        # Aseguramos que Calidad y Calibre sean texto para que el gráfico no falle
-        # (Si no existen las columnas, Pandas las creará vacías para evitar error)
+        # Aseguramos columnas de texto
         if 'Calidad' not in df_raw.columns: df_raw['Calidad'] = "S/D"
         if 'Calibre' not in df_raw.columns: df_raw['Calibre'] = "S/D"
         
@@ -106,9 +106,14 @@ try:
         df_raw['Calibre'] = df_raw['Calibre'].astype(str)
 
 
+        # --- CÁLCULO DE FECHA PERÚ (NUEVO) ---
+        zona_peru = pytz.timezone('America/Lima')
+        hoy_peru = datetime.now(zona_peru).date()
+
         # --- BARRA LATERAL ---
         st.sidebar.header("📅 Configuración")
-        fecha_seleccionada = st.sidebar.date_input("Selecciona la Fecha", date.today())
+        # Usamos hoy_peru en lugar de date.today()
+        fecha_seleccionada = st.sidebar.date_input("Selecciona la Fecha", hoy_peru)
         
         st.sidebar.markdown("---")
         st.sidebar.subheader("⚙️ Conversión")
@@ -208,9 +213,8 @@ try:
 
             st.markdown("---")
             
-            # --- 3. GRÁFICOS SOLARES POR LOTE (AJUSTADO) ---
+            # --- 3. GRÁFICOS SOLARES POR LOTE ---
             st.subheader("🔍 Desglose Multidimensional")
-            # Texto corregido para ser más genérico
             st.info("💡 Cada gráfico representa un Lote. Los anillos se generan en el orden que configures en el menú de la izquierda.")
             
             col_sun_config, col_sun_graf = st.columns([1, 4])
@@ -218,7 +222,6 @@ try:
             with col_sun_config:
                 st.markdown("**Configuración:**")
                 
-                # 1. Selector de Jerarquía (Anillos)
                 columnas_disponibles = ['Producto', 'Calidad', 'Calibre', 'Cuadrilla']
                 columnas_reales = [c for c in columnas_disponibles if c in df_filtrado.columns]
                 
@@ -230,7 +233,6 @@ try:
                 
                 st.markdown("---")
                 
-                # 2. Selector de Lotes a mostrar
                 lotes_activos = sorted(df_filtrado['Lote'].unique())
                 lotes_seleccionados = st.multiselect(
                     "Lotes visibles:",
@@ -240,16 +242,11 @@ try:
             
             with col_sun_graf:
                 if path_seleccionado and lotes_seleccionados:
-                    # AJUSTE DE DISEÑO:
-                    # Si hay solo 1 lote, usamos 1 columna para que no quede espacio vacío feo.
-                    # Si hay más, usamos 2 columnas.
                     num_cols = 1 if len(lotes_seleccionados) == 1 else 2
                     cols = st.columns(num_cols)
                     
                     for i, lote in enumerate(lotes_seleccionados):
-                        # Asignamos a la columna correspondiente
                         with cols[i % num_cols]:
-                            # Filtramos datos solo de este lote
                             df_lote = df_filtrado[df_filtrado['Lote'] == lote]
                             total_lote = df_lote['Toneladas Calc'].sum()
                             
@@ -265,7 +262,7 @@ try:
                             fig_sun.update_layout(
                                 margin=dict(t=50, l=0, r=0, b=0),
                                 font=dict(family="Arial", size=14),
-                                height=450 if num_cols == 1 else 350 # Hacemos el gráfico un poco más alto si está solo
+                                height=450 if num_cols == 1 else 350
                             )
                             st.plotly_chart(fig_sun, use_container_width=True)
                             
@@ -290,7 +287,7 @@ try:
                 st.dataframe(
                     resumen_lote.style.format({
                         "Total Kilos": "{:,.1f}",
-                        "Total Toneladas": "{:,.2f}",
+                        "Total Toneladas": "{:,.1f}",
                         "Total Bandejas": "{:,.0f}"
                     }), 
                     width="stretch",
@@ -317,6 +314,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
