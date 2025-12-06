@@ -103,7 +103,7 @@ st.markdown("""
         .stTabs [data-baseweb="tab-list"] {
             gap: 10px;
             border-bottom: 1px solid #d0d7de;
-            background-color: white !important;
+            background-color: transparent !important;
             padding-top: 10px;
             padding-left: 10px; /* Un poco de margen para que no se pegue al borde */
             border-radius: 5px 5px 0 0;
@@ -471,6 +471,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
