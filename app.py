@@ -206,8 +206,6 @@ try:
                 )
                 
                 # --- SOLUCIÓN AL GRÁFICO ---
-                # Forzamos que el eje X sea de tipo 'category' (texto) y no numérico.
-                # Esto evita que Plotly convierta "0020" en 20.
                 fig_lote.update_xaxes(type='category', title="<b>N° Lote</b>")
                 
                 fig_lote = estilo_grafico(fig_lote)
@@ -274,8 +272,8 @@ try:
 
             st.markdown("---")
 
-            # --- 4. TABLAS DE DETALLE ---
-            st.subheader("📋 Tablas de Detalle")
+            # --- 4. TABLAS DE DETALLE (Resumen Global) ---
+            st.subheader("📋 Tablas de Detalle Global")
             
             col_tabla1, col_tabla2 = st.columns(2)
 
@@ -314,12 +312,52 @@ try:
                     hide_index=True,
                     use_container_width=True
                 )
+            
+            # --- 5. NUEVA SECCIÓN: DETALLE POR PRODUCTO EN CADA LOTE ---
+            st.markdown("---")
+            st.subheader("🧩 Detalle de Productos por Lote")
+            
+            # Obtenemos lista única de lotes ordenados
+            lotes_unicos = sorted(df_filtrado['Lote'].unique())
+            
+            if len(lotes_unicos) > 0:
+                # Creamos 2 columnas para que las tablas se vean ordenadas
+                cols_detalle = st.columns(2)
+                
+                for index, lote_actual in enumerate(lotes_unicos):
+                    # Alternamos entre columna 0 y columna 1
+                    with cols_detalle[index % 2]:
+                        st.markdown(f"#### 🏷️ Lote: {lote_actual}")
+                        
+                        # Filtramos data solo para ese lote
+                        df_lote_especifico = df_filtrado[df_filtrado['Lote'] == lote_actual]
+                        
+                        # Agrupamos por lo que pediste: Producto, Calidad, Calibre
+                        tabla_detalle = df_lote_especifico.groupby(['Producto', 'Calidad', 'Calibre'])[['Toneladas Calc']].sum().reset_index()
+                        
+                        # Renombramos columna para que se vea bien
+                        tabla_detalle.columns = ['Producto', 'Calidad', 'Calibre', 'Total Toneladas']
+                        
+                        # Mostramos la tabla
+                        st.dataframe(
+                            tabla_detalle,
+                            column_config={
+                                "Total Toneladas": st.column_config.NumberColumn(format="%.2f t"),
+                                "Producto": st.column_config.TextColumn("Producto"),
+                                "Calidad": st.column_config.TextColumn("Calidad"),
+                                "Calibre": st.column_config.TextColumn("Calibre"),
+                            },
+                            hide_index=True,
+                            use_container_width=True
+                        )
+                        st.markdown("<br>", unsafe_allow_html=True) # Espacio extra
 
     else:
         st.error("❌ No hay datos cargados.")
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
