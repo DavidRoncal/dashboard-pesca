@@ -7,7 +7,7 @@ import pytz
 import plotly.express as px
 import json
 import os
-import io  # <--- NUEVO: Necesario para manipular el archivo Excel en memoria
+import io
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Dashboard Pesca", layout="wide", initial_sidebar_state="collapsed")
@@ -163,14 +163,25 @@ try:
                 col4.metric("Cuadrillas", f"{df_filtrado['Cuadrilla'].nunique()} 👷")
                 st.markdown("---")
 
-                # Timeline
+                # --- 1. LÍNEA DE TIEMPO (Scatter Uniforme) ---
                 st.subheader("⏰ Actividad en Tiempo Real")
                 fig_timeline = px.scatter(
-                    df_filtrado.sort_values("Marca temporal"), x="Marca temporal", y="Cuadrilla",
-                    size="Bandejas", color="Producto", hover_data=["Lote", "Kilos Calc"],
-                    color_discrete_sequence=px.colors.qualitative.Bold, height=400
+                    df_filtrado.sort_values("Marca temporal"),
+                    x="Marca temporal",
+                    y="Cuadrilla",
+                    # size="Bandejas", <-- ELIMINADO para uniformidad
+                    color="Producto",
+                    hover_data=["Lote", "Bandejas", "Kilos Calc"],
+                    color_discrete_sequence=px.colors.qualitative.Bold,
+                    height=400
                 )
+                
+                # Fijamos un tamaño de marcador visible y limpio
+                fig_timeline.update_traces(marker=dict(size=12, line=dict(width=1, color='DarkSlateGrey')))
+                
                 fig_timeline.update_xaxes(tickformat="%H:%M", title_text="<b>Hora del Día</b>")
+                fig_timeline.update_yaxes(title_text="<b>Cuadrilla</b>")
+                
                 st.plotly_chart(estilo_grafico(fig_timeline), use_container_width=True)
                 st.markdown("---")
                 
@@ -306,7 +317,6 @@ try:
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
                 df_tabla_view.to_excel(writer, index=False, sheet_name='BaseDatos')
-                # Autoajuste columnas
                 worksheet = writer.sheets['BaseDatos']
                 for i, col in enumerate(df_tabla_view.columns):
                     column_len = max(df_tabla_view[col].astype(str).map(len).max(), len(col)) + 2
@@ -324,6 +334,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
