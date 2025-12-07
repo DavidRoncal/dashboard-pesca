@@ -13,7 +13,7 @@ import numpy as np # Importamos numpy para manejo seguro de divisiones
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Dashboard Pesca", layout="wide", initial_sidebar_state="collapsed")
 
-# --- ESTILOS CSS (INTACTOS) ---
+# --- ESTILOS CSS ---
 st.markdown("""
     <style>
         .main-title {
@@ -77,7 +77,6 @@ st.markdown("""
             color: #31333F !important;
         }
         
-        /* Regla para Selects y Inputs base (sin forzar el calendario global) */
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div,
         section[data-testid="stSidebar"] div[data-baseweb="base-input"] {
             background-color: white !important;
@@ -127,6 +126,17 @@ st.markdown("""
             background-color: #004080 !important;
             color: white !important;
             border-color: #004080;
+        }
+
+        /* =========================================
+           6. AJUSTES MÓVILES (SOLICITADO)
+           ========================================= */
+        @media (max-width: 640px) {
+            .stTabs [data-baseweb="tab"] {
+                font-size: 12px !important; /* Letra más pequeña */
+                padding: 5px 10px !important; /* Menos espacio para que entren todos */
+                height: auto !important; /* Altura flexible */
+            }
         }
     </style>
     <h1 class='main-title'>&#128031; Dashboard de Producción Pesquera</h1>
@@ -568,6 +578,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
