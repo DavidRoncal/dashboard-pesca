@@ -161,14 +161,14 @@ def estilo_grafico(fig):
             tickfont=dict(color='black', size=12, family="Arial", weight="bold"),
             gridcolor='#eeeeee'
         ),
-        # LEYENDA OPTIMIZADA: Sin título y ocupando todo el ancho desde la izquierda
+        # LEYENDA OPTIMIZADA
         legend=dict(
             orientation="h",        # Horizontal
             yanchor="top",
             y=-0.2,                 # Posición debajo del eje X
-            xanchor="left",         # Alineado a la izquierda (inicio eje Y)
-            x=0,                    # Empieza desde el borde izquierdo del gráfico (aprovecha todo el ancho)
-            title=None,             # QUITA EL NOMBRE "PRODUCTO"
+            xanchor="left",         # Alineado a la izquierda
+            x=0,                    # Empieza desde el borde izquierdo
+            title=None,             # Sin título
             font=dict(size=12, color='black', family="Arial"),
             bgcolor="rgba(255,255,255, 0.9)",
             bordercolor="rgba(0,0,0,0)", 
@@ -316,10 +316,10 @@ try:
                 # Tablas Detalle
                 st.subheader("📋 Tablas de Detalle Global")
                 
-                # Configuración de columnas (NOMBRES ACTUALIZADOS)
+                # Configuración de columnas (SIN UNIDADES PARA Kg y Tn)
                 config_tablas = {
-                    "Kg": st.column_config.NumberColumn(format="%.1f kg"),
-                    "Tn": st.column_config.NumberColumn(format="%.2f t"),
+                    "Kg": st.column_config.NumberColumn(format="%.1f"), # Sin " kg"
+                    "Tn": st.column_config.NumberColumn(format="%.2f"), # Sin " t"
                     "Bandejas": st.column_config.NumberColumn(format="%.0f"),
                     "Lote": st.column_config.TextColumn("N° Lote"),
                     "N° Coches": st.column_config.NumberColumn("N° Coches", format="%.2f"), 
@@ -337,7 +337,7 @@ try:
                 resumen_lote.columns = ['Lote', 'N° Coches', 'Bandejas', 'Kg', 'Tn']
                 st.dataframe(resumen_lote, column_config=config_tablas, hide_index=True, use_container_width=True)
 
-                # --- TABLA 2: Resumen por Cuadrilla (Vertical, debajo de la anterior) ---
+                # --- TABLA 2: Resumen por Cuadrilla (Vertical) ---
                 st.markdown("##### 👷 Resumen por Cuadrilla")
                 resumen_cuadrilla = df_filtrado.groupby('Cuadrilla').agg({
                     'Bandejas': 'sum',
@@ -360,7 +360,6 @@ try:
                             st.markdown(f"#### 🏷️ Lote: {lote_actual}")
                             df_lote_especifico = df_filtrado[df_filtrado['Lote'] == lote_actual]
                             tabla_detalle = df_lote_especifico.groupby(['Producto', 'Calidad', 'Calibre'])[['Toneladas Calc']].sum().reset_index()
-                            # CAMBIO: "Total Toneladas" -> "Toneladas"
                             tabla_detalle.columns = ['Producto', 'Calidad', 'Calibre', 'Toneladas']
                             st.dataframe(
                                 tabla_detalle, column_config={"Toneladas": st.column_config.NumberColumn(format="%.2f t")},
@@ -379,16 +378,17 @@ try:
             else:
                 # 1. Preparar Datos Base
                 df_rend = df_filtrado.groupby('Lote')[['Toneladas Calc']].sum().reset_index()
-                df_rend.columns = ['Lote', 'Total Envasado (tn)']
+                # Nombres de columna actualizados
+                df_rend.columns = ['Lote', 'Envasado (tn)']
                 
                 # 2. Inicializar columna de Descarga vacía (0.0)
-                if 'Total de descarga (tn)' not in df_rend.columns:
-                    df_rend['Total de descarga (tn)'] = 0.0
+                if 'Descarga (tn)' not in df_rend.columns:
+                    df_rend['Descarga (tn)'] = 0.0
 
                 # Reordenamos columnas
-                df_rend = df_rend[['Lote', 'Total de descarga (tn)', 'Total Envasado (tn)']]
+                df_rend = df_rend[['Lote', 'Descarga (tn)', 'Envasado (tn)']]
 
-                st.info("📝 Ingresa los valores de 'Total de descarga (tn)' y presiona el botón para calcular.")
+                st.info("📝 Ingresa los valores de 'Descarga (tn)' y presiona el botón para calcular.")
                 
                 # 3. Formulario para evitar recargas constantes
                 with st.form("calculo_rendimiento_form"):
@@ -396,10 +396,9 @@ try:
                         df_rend,
                         column_config={
                             "Lote": st.column_config.TextColumn("Lote", disabled=True),
-                            "Total Envasado (tn)": st.column_config.NumberColumn("Total Envasado (tn)", format="%.3f t", disabled=True),
-                            # MODIFICADO: step=0.001 y formato a 3 decimales
-                            "Total de descarga (tn)": st.column_config.NumberColumn(
-                                "Total de descarga (tn)", 
+                            "Envasado (tn)": st.column_config.NumberColumn("Envasado (tn)", format="%.3f t", disabled=True),
+                            "Descarga (tn)": st.column_config.NumberColumn(
+                                "Descarga (tn)", 
                                 format="%.3f t", 
                                 min_value=0.0, 
                                 step=0.001, 
@@ -416,9 +415,9 @@ try:
 
                 # 4. Cálculos y Resultados (Solo al presionar el botón)
                 if calcular_btn and not edited_df.empty:
-                    # Fórmula CORREGIDA: (Total Envasado / Total Descarga) * 100
+                    # Fórmula: (Total Envasado / Total Descarga) * 100
                     with np.errstate(divide='ignore', invalid='ignore'):
-                         edited_df['Rendimiento (%)'] = (edited_df['Total Envasado (tn)'] / edited_df['Total de descarga (tn)']) * 100
+                         edited_df['Rendimiento (%)'] = (edited_df['Envasado (tn)'] / edited_df['Descarga (tn)']) * 100
                     
                     edited_df['Rendimiento (%)'] = edited_df['Rendimiento (%)'].fillna(0.0)
                     edited_df['Rendimiento (%)'] = edited_df['Rendimiento (%)'].replace([np.inf, -np.inf], 0.0)
@@ -429,8 +428,8 @@ try:
                         edited_df,
                         column_config={
                             "Lote": st.column_config.TextColumn("Lote"),
-                            "Total de descarga (tn)": st.column_config.NumberColumn("Total de descarga (tn)", format="%.3f t"),
-                            "Total Envasado (tn)": st.column_config.NumberColumn("Total Envasado (tn)", format="%.3f t"),
+                            "Descarga (tn)": st.column_config.NumberColumn("Descarga (tn)", format="%.3f t"),
+                            "Envasado (tn)": st.column_config.NumberColumn("Envasado (tn)", format="%.3f t"),
                             "Rendimiento (%)": st.column_config.ProgressColumn(
                                 "Rendimiento (%)", 
                                 format="%.1f%%", 
@@ -554,6 +553,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
