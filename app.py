@@ -354,18 +354,17 @@ try:
                 st.subheader("🧩 Detalle de Productos por Lote")
                 lotes_unicos = sorted(df_filtrado['Lote'].unique())
                 if len(lotes_unicos) > 0:
-                    cols_detalle = st.columns(2)
-                    for index, lote_actual in enumerate(lotes_unicos):
-                        with cols_detalle[index % 2]:
-                            st.markdown(f"#### 🏷️ Lote: {lote_actual}")
-                            df_lote_especifico = df_filtrado[df_filtrado['Lote'] == lote_actual]
-                            tabla_detalle = df_lote_especifico.groupby(['Producto', 'Calidad', 'Calibre'])[['Toneladas Calc']].sum().reset_index()
-                            tabla_detalle.columns = ['Producto', 'Calidad', 'Calibre', 'Toneladas']
-                            st.dataframe(
-                                tabla_detalle, column_config={"Toneladas": st.column_config.NumberColumn(format="%.2f t")},
-                                hide_index=True, use_container_width=True
-                            )
-                            st.markdown("<br>", unsafe_allow_html=True)
+                    # MODIFICACIÓN: Tablas una debajo de otra (eliminada la división en st.columns(2))
+                    for lote_actual in lotes_unicos:
+                        st.markdown(f"#### 🏷️ Lote: {lote_actual}")
+                        df_lote_especifico = df_filtrado[df_filtrado['Lote'] == lote_actual]
+                        tabla_detalle = df_lote_especifico.groupby(['Producto', 'Calidad', 'Calibre'])[['Toneladas Calc']].sum().reset_index()
+                        tabla_detalle.columns = ['Producto', 'Calidad', 'Calibre', 'Toneladas']
+                        st.dataframe(
+                            tabla_detalle, column_config={"Toneladas": st.column_config.NumberColumn(format="%.2f t")},
+                            hide_index=True, use_container_width=True
+                        )
+                        st.markdown("<br>", unsafe_allow_html=True)
         
         # ==============================================================================
         # PESTAÑA 2: RENDIMIENTO DIARIO
@@ -397,6 +396,7 @@ try:
                         column_config={
                             "Lote": st.column_config.TextColumn("Lote", disabled=True),
                             "Envasado (tn)": st.column_config.NumberColumn("Envasado (tn)", format="%.3f t", disabled=True),
+                            # MODIFICADO: step=0.001 y formato a 3 decimales
                             "Descarga (tn)": st.column_config.NumberColumn(
                                 "Descarga (tn)", 
                                 format="%.3f t", 
@@ -430,11 +430,10 @@ try:
                             "Lote": st.column_config.TextColumn("Lote"),
                             "Descarga (tn)": st.column_config.NumberColumn("Descarga (tn)", format="%.3f t"),
                             "Envasado (tn)": st.column_config.NumberColumn("Envasado (tn)", format="%.3f t"),
-                            "Rendimiento (%)": st.column_config.ProgressColumn(
+                            # MODIFICACIÓN: Ahora NumberColumn en lugar de ProgressColumn, mostrando solo el porcentaje
+                            "Rendimiento (%)": st.column_config.NumberColumn(
                                 "Rendimiento (%)", 
-                                format="%.1f%%", 
-                                min_value=0, 
-                                max_value=100, 
+                                format="%.1f%%"
                             ), 
                         },
                         hide_index=True,
@@ -553,6 +552,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
