@@ -161,8 +161,14 @@ def estilo_grafico(fig):
             tickfont=dict(color='black', size=12, family="Arial", weight="bold"),
             gridcolor='#eeeeee'
         ),
+        # LEYENDA OPTIMIZADA: Sin título y ocupando todo el ancho desde la izquierda
         legend=dict(
-            title_font=dict(size=13, color='black', family="Arial Black"),
+            orientation="h",        # Horizontal
+            yanchor="top",
+            y=-0.2,                 # Posición debajo del eje X
+            xanchor="left",         # Alineado a la izquierda (inicio eje Y)
+            x=0,                    # Empieza desde el borde izquierdo del gráfico (aprovecha todo el ancho)
+            title=None,             # QUITA EL NOMBRE "PRODUCTO"
             font=dict(size=12, color='black', family="Arial"),
             bgcolor="rgba(255,255,255, 0.9)",
             bordercolor="rgba(0,0,0,0)", 
@@ -307,39 +313,9 @@ try:
                     st.plotly_chart(estilo_grafico(fig_lote), use_container_width=True)
 
                 st.markdown("---")
-                
-                # Sunburst
-                st.subheader("🔍 Desglose Multidimensional")
-                col_sun_config, col_sun_graf = st.columns([1, 4])
-                with col_sun_config:
-                    st.markdown("**Configuración:**")
-                    columnas_disponibles = ['Producto', 'Calidad', 'Calibre', 'Cuadrilla']
-                    columnas_reales = [c for c in columnas_disponibles if c in df_filtrado.columns]
-                    path_seleccionado = st.multiselect("Jerarquía:", options=columnas_reales, default=['Producto', 'Calidad', 'Calibre'])
-                    st.markdown("---")
-                    lotes_activos = sorted(df_filtrado['Lote'].unique())
-                    lotes_seleccionados = st.multiselect("Lotes visibles:", options=lotes_activos, default=lotes_activos)
-                with col_sun_graf:
-                    if path_seleccionado and lotes_seleccionados:
-                        num_cols = 1 if len(lotes_seleccionados) == 1 else 2
-                        cols = st.columns(num_cols)
-                        for i, lote in enumerate(lotes_seleccionados):
-                            with cols[i % num_cols]:
-                                df_lote = df_filtrado[df_filtrado['Lote'] == lote]
-                                total_lote = df_lote['Toneladas Calc'].sum()
-                                fig_sun = px.sunburst(
-                                    df_lote, path=path_seleccionado, values='Toneladas Calc', color='Producto', 
-                                    color_discrete_sequence=px.colors.qualitative.Pastel,
-                                    title=f"<b>Lote {lote}</b><br>Total: {total_lote:.2f} t", branchvalues="total"
-                                )
-                                fig_sun.update_layout(margin=dict(t=50, l=0, r=0, b=0), height=350)
-                                st.plotly_chart(fig_sun, use_container_width=True)
-
-                st.markdown("---")
 
                 # Tablas Detalle
                 st.subheader("📋 Tablas de Detalle Global")
-                col_tabla1, col_tabla2 = st.columns(2)
                 
                 # Configuración de columnas
                 config_tablas = {
@@ -350,30 +326,30 @@ try:
                     "N° Coches completos": st.column_config.NumberColumn("N° Coches completos", format="%.2f"), 
                 }
                 
-                with col_tabla1:
-                    st.markdown("##### 📦 Resumen por Lote")
-                    resumen_lote = df_filtrado.groupby('Lote').agg({
-                        'Bandejas': 'sum',
-                        'Kilos Calc': 'sum',
-                        'Toneladas Calc': 'sum'
-                    }).reset_index()
-                    resumen_lote['N° Coches completos'] = resumen_lote['Bandejas'] / 50
-                    resumen_lote = resumen_lote[['Lote', 'N° Coches completos', 'Bandejas', 'Kilos Calc', 'Toneladas Calc']]
-                    resumen_lote.columns = ['Lote', 'N° Coches completos', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
-                    st.dataframe(resumen_lote, column_config=config_tablas, hide_index=True, use_container_width=True)
+                # --- TABLA 1: Resumen por Lote (Vertical) ---
+                st.markdown("##### 📦 Resumen por Lote")
+                resumen_lote = df_filtrado.groupby('Lote').agg({
+                    'Bandejas': 'sum',
+                    'Kilos Calc': 'sum',
+                    'Toneladas Calc': 'sum'
+                }).reset_index()
+                resumen_lote['N° Coches completos'] = resumen_lote['Bandejas'] / 50
+                resumen_lote = resumen_lote[['Lote', 'N° Coches completos', 'Bandejas', 'Kilos Calc', 'Toneladas Calc']]
+                resumen_lote.columns = ['Lote', 'N° Coches completos', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
+                st.dataframe(resumen_lote, column_config=config_tablas, hide_index=True, use_container_width=True)
 
-                with col_tabla2:
-                    st.markdown("##### 👷 Resumen por Cuadrilla")
-                    resumen_cuadrilla = df_filtrado.groupby('Cuadrilla').agg({
-                        'Bandejas': 'sum',
-                        'Kilos Calc': 'sum',
-                        'Toneladas Calc': 'sum'
-                    }).reset_index()
-                    resumen_cuadrilla['N° Coches completos'] = resumen_cuadrilla['Bandejas'] / 50
-                    resumen_cuadrilla = resumen_cuadrilla[['Cuadrilla', 'N° Coches completos', 'Bandejas', 'Kilos Calc', 'Toneladas Calc']]
-                    resumen_cuadrilla.columns = ['Cuadrilla', 'N° Coches completos', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
-                    config_cuadrilla = config_tablas.copy(); config_cuadrilla.pop("Lote", None) 
-                    st.dataframe(resumen_cuadrilla, column_config=config_cuadrilla, hide_index=True, use_container_width=True)
+                # --- TABLA 2: Resumen por Cuadrilla (Vertical, debajo de la anterior) ---
+                st.markdown("##### 👷 Resumen por Cuadrilla")
+                resumen_cuadrilla = df_filtrado.groupby('Cuadrilla').agg({
+                    'Bandejas': 'sum',
+                    'Kilos Calc': 'sum',
+                    'Toneladas Calc': 'sum'
+                }).reset_index()
+                resumen_cuadrilla['N° Coches completos'] = resumen_cuadrilla['Bandejas'] / 50
+                resumen_cuadrilla = resumen_cuadrilla[['Cuadrilla', 'N° Coches completos', 'Bandejas', 'Kilos Calc', 'Toneladas Calc']]
+                resumen_cuadrilla.columns = ['Cuadrilla', 'N° Coches completos', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
+                config_cuadrilla = config_tablas.copy(); config_cuadrilla.pop("Lote", None) 
+                st.dataframe(resumen_cuadrilla, column_config=config_cuadrilla, hide_index=True, use_container_width=True)
                 
                 st.markdown("---")
                 st.subheader("🧩 Detalle de Productos por Lote")
@@ -578,6 +554,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
