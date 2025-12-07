@@ -8,6 +8,7 @@ import plotly.express as px
 import json
 import os
 import io
+import numpy as np # Importamos numpy para manejo seguro de divisiones
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Dashboard Pesca", layout="wide", initial_sidebar_state="collapsed")
@@ -16,7 +17,7 @@ st.set_page_config(page_title="Dashboard Pesca", layout="wide", initial_sidebar_
 st.markdown("""
     <style>
         .main-title {
-            text-align: center; 
+            text-align: center !important;
             color: #004080;
             font-weight: 800;
             font-family: 'Arial Black', sans-serif;
@@ -38,19 +39,15 @@ st.markdown("""
         /* =========================================
            2. FLECHA DE BARRA LATERAL CONTRAÍDA
            ========================================= */
-        /* Aplicamos el estilo blanco SOLO a la flecha de abrir (estado contraído) */
-        
-        /* Usando la clase específica que encontraste */
         .st-emotion-cache-pd6qx2 {
             color: white !important;
             fill: white !important;
-            opacity: 1 !important; /* Opacidad al 100% para que no se vea gris */
+            opacity: 1 !important;
         }
         
-        /* Refuerzo para el contenedor del control contraído */
         [data-testid="stSidebarCollapsedControl"] {
             color: white !important;
-            background-color: #004080 !important; /* Fondo azul para mayor visibilidad */
+            background-color: #004080 !important;
             opacity: 1 !important;
         }
         
@@ -65,7 +62,6 @@ st.markdown("""
             background-color: #004080;
         }
         
-        /* Textos blancos (Títulos y etiquetas) */
         section[data-testid="stSidebar"] h1, 
         section[data-testid="stSidebar"] h2, 
         section[data-testid="stSidebar"] h3, 
@@ -75,12 +71,12 @@ st.markdown("""
             color: white !important;
         }
 
-        /* INPUTS (Cajas de texto): Texto oscuro para que sea legible */
         section[data-testid="stSidebar"] input,
         section[data-testid="stSidebar"] .stSelectbox div,
         section[data-testid="stSidebar"] .stMultiSelect div {
             color: #31333F !important;
         }
+        
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div,
         section[data-testid="stSidebar"] div[data-baseweb="base-input"] {
             background-color: white !important;
@@ -88,7 +84,7 @@ st.markdown("""
         }
 
         /* =========================================
-           4. TAGS DE MULTISELECT (CORRECCIÓN USUARIO)
+           4. TAGS DE MULTISELECT
            ========================================= */
         .st-c2,
         span[data-baseweb="tag"] {
@@ -99,13 +95,12 @@ st.markdown("""
         /* =========================================
            5. PESTAÑAS (TABS)
            ========================================= */
-        /* Forzamos fondo blanco al contenedor de la lista de tabs para evitar el cuadro negro */
         .stTabs [data-baseweb="tab-list"] {
             gap: 10px;
             border-bottom: 1px solid #d0d7de;
             background-color: transparent !important;
             padding-top: 10px;
-            padding-left: 10px; /* Un poco de margen para que no se pegue al borde */
+            padding-left: 10px;
             border-radius: 5px 5px 0 0;
         }
         
@@ -208,6 +203,7 @@ try:
         
         df_raw['Calidad'] = df_raw['Calidad'].astype(str)
         df_raw['Calibre'] = df_raw['Calibre'].astype(str)
+        df_raw['N° de Coche'] = df_raw['N° de Coche'].astype(str).str.strip()
 
         # --- FECHA PERÚ ---
         zona_peru = pytz.timezone('America/Lima')
@@ -225,26 +221,33 @@ try:
         df_raw['Kilos Calc'] = df_raw['Bandejas'] * kilos_por_bandeja
         df_raw['Toneladas Calc'] = df_raw['Kilos Calc'] / 1000
 
+        # --- FILTRADO GLOBAL ---
+        df_filtrado = df_raw[df_raw['Fecha_Filtro'] == fecha_seleccionada].copy()
+
         # --- TABS ---
-        tab_reporte, tab_historico, tab_datos = st.tabs(["Reporte Diario", "Tendencias Históricas", "Base de Datos"])
+        tab_reporte, tab_rendimiento, tab_historico, tab_datos = st.tabs(["Reporte Diario", "Rendimiento Diario", "Tendencias Históricas", "Base de Datos"])
 
         # ==============================================================================
         # PESTAÑA 1: REPORTE DIARIO
         # ==============================================================================
         with tab_reporte:
-            df_filtrado = df_raw[df_raw['Fecha_Filtro'] == fecha_seleccionada].copy()
-
             if df_filtrado.empty:
                 st.warning(f"⚠️ No hay datos para el día: {fecha_seleccionada}")
             else:
                 # KPIs
                 st.markdown("### 📊 Métricas del Día")
-                col_fecha, col1, col2, col3, col4 = st.columns(5)
+                col_fecha, col1, col2, col3, col4, col5 = st.columns(6)
+                
                 col_fecha.metric("Fecha", f"{fecha_seleccionada.strftime('%d/%m/%Y')} 🗓️")
                 col1.metric("Bandejas", f"{df_filtrado['Bandejas'].sum():,.0f} 📦")
                 col2.metric("Toneladas", f"{df_filtrado['Toneladas Calc'].sum():,.2f} t ⚖️")
                 col3.metric("Lotes", f"{df_filtrado['Lote'].nunique()} 🏷️")
                 col4.metric("Cuadrillas", f"{df_filtrado['Cuadrilla'].nunique()} 👷")
+                
+                # MÉTRICA CÁLCULO POR VOLUMEN
+                coches_estimados = df_filtrado['Bandejas'].sum() / 50
+                col5.metric("N° Coches completos", f"{coches_estimados:,.2f} 🛒")
+                
                 st.markdown("---")
 
                 # Timeline Scatter
@@ -254,7 +257,7 @@ try:
                     x="Marca temporal",
                     y="Cuadrilla",
                     color="Producto",
-                    hover_data=["Lote", "Bandejas", "Kilos Calc"],
+                    hover_data=["Lote", "Bandejas", "Kilos Calc", "N° de Coche"],
                     color_discrete_sequence=px.colors.qualitative.Bold,
                     height=450
                 )
@@ -277,7 +280,8 @@ try:
                     df_cuadrilla = df_filtrado.groupby(['Cuadrilla', 'Producto'])[['Toneladas Calc']].sum().reset_index()
                     fig_cuadrilla = px.bar(df_cuadrilla, x="Cuadrilla", y="Toneladas Calc", color="Producto", barmode='group',
                         labels={"Toneladas Calc": "<b>Toneladas (t)</b>", "Cuadrilla": "<b>Cuadrilla</b>"},
-                        color_discrete_sequence=px.colors.qualitative.Pastel, text_auto='.3f')
+                        color_discrete_sequence=px.colors.qualitative.Pastel, text_auto='.2f')
+                    fig_cuadrilla.update_traces(textfont_weight='bold')
                     st.plotly_chart(estilo_grafico(fig_cuadrilla), use_container_width=True)
                     
                 with col_graf2:
@@ -285,7 +289,8 @@ try:
                     df_lote = df_filtrado.groupby(['Lote', 'Producto'])[['Toneladas Calc']].sum().reset_index()
                     fig_lote = px.bar(df_lote, x="Lote", y="Toneladas Calc", color="Producto", barmode='group',
                         labels={"Toneladas Calc": "<b>Toneladas (t)</b>", "Lote": "<b>N° Lote</b>"},
-                        color_discrete_sequence=px.colors.qualitative.Pastel, text_auto='.3f')
+                        color_discrete_sequence=px.colors.qualitative.Pastel, text_auto='.2f')
+                    fig_lote.update_traces(textfont_weight='bold')
                     fig_lote.update_xaxes(type='category', title="<b>N° Lote</b>")
                     st.plotly_chart(estilo_grafico(fig_lote), use_container_width=True)
 
@@ -323,22 +328,38 @@ try:
                 # Tablas Detalle
                 st.subheader("📋 Tablas de Detalle Global")
                 col_tabla1, col_tabla2 = st.columns(2)
+                
+                # Configuración de columnas
                 config_tablas = {
                     "Total Kilos": st.column_config.NumberColumn(format="%.1f kg"),
                     "Total Toneladas": st.column_config.NumberColumn(format="%.2f t"),
                     "Total Bandejas": st.column_config.NumberColumn(format="%.0f"),
                     "Lote": st.column_config.TextColumn("N° Lote"),
+                    "N° Coches completos": st.column_config.NumberColumn("N° Coches completos", format="%.2f"), 
                 }
+                
                 with col_tabla1:
                     st.markdown("##### 📦 Resumen por Lote")
-                    resumen_lote = df_filtrado.groupby('Lote')[['Bandejas', 'Kilos Calc', 'Toneladas Calc']].sum().reset_index()
-                    resumen_lote.columns = ['Lote', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
+                    resumen_lote = df_filtrado.groupby('Lote').agg({
+                        'Bandejas': 'sum',
+                        'Kilos Calc': 'sum',
+                        'Toneladas Calc': 'sum'
+                    }).reset_index()
+                    resumen_lote['N° Coches completos'] = resumen_lote['Bandejas'] / 50
+                    resumen_lote = resumen_lote[['Lote', 'N° Coches completos', 'Bandejas', 'Kilos Calc', 'Toneladas Calc']]
+                    resumen_lote.columns = ['Lote', 'N° Coches completos', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
                     st.dataframe(resumen_lote, column_config=config_tablas, hide_index=True, use_container_width=True)
 
                 with col_tabla2:
                     st.markdown("##### 👷 Resumen por Cuadrilla")
-                    resumen_cuadrilla = df_filtrado.groupby('Cuadrilla')[['Bandejas', 'Kilos Calc', 'Toneladas Calc']].sum().reset_index()
-                    resumen_cuadrilla.columns = ['Cuadrilla', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
+                    resumen_cuadrilla = df_filtrado.groupby('Cuadrilla').agg({
+                        'Bandejas': 'sum',
+                        'Kilos Calc': 'sum',
+                        'Toneladas Calc': 'sum'
+                    }).reset_index()
+                    resumen_cuadrilla['N° Coches completos'] = resumen_cuadrilla['Bandejas'] / 50
+                    resumen_cuadrilla = resumen_cuadrilla[['Cuadrilla', 'N° Coches completos', 'Bandejas', 'Kilos Calc', 'Toneladas Calc']]
+                    resumen_cuadrilla.columns = ['Cuadrilla', 'N° Coches completos', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
                     config_cuadrilla = config_tablas.copy(); config_cuadrilla.pop("Lote", None) 
                     st.dataframe(resumen_cuadrilla, column_config=config_cuadrilla, hide_index=True, use_container_width=True)
                 
@@ -358,9 +379,83 @@ try:
                                 hide_index=True, use_container_width=True
                             )
                             st.markdown("<br>", unsafe_allow_html=True)
+        
+        # ==============================================================================
+        # PESTAÑA 2: RENDIMIENTO DIARIO
+        # ==============================================================================
+        with tab_rendimiento:
+            st.markdown("### ⚡ Cálculo de Rendimiento Diario")
+            
+            if df_filtrado.empty:
+                st.warning(f"⚠️ No hay datos para el día: {fecha_seleccionada}")
+            else:
+                # 1. Preparar Datos Base
+                df_rend = df_filtrado.groupby('Lote')[['Toneladas Calc']].sum().reset_index()
+                df_rend.columns = ['Lote', 'Total Envasado (tn)']
+                
+                # 2. Inicializar columna de Descarga vacía (0.0)
+                if 'Total de descarga (tn)' not in df_rend.columns:
+                    df_rend['Total de descarga (tn)'] = 0.0
+
+                # Reordenamos columnas
+                df_rend = df_rend[['Lote', 'Total de descarga (tn)', 'Total Envasado (tn)']]
+
+                st.info("📝 Ingresa los valores de 'Total de descarga (tn)' y presiona el botón para calcular.")
+                
+                # 3. Formulario para evitar recargas constantes
+                with st.form("calculo_rendimiento_form"):
+                    edited_df = st.data_editor(
+                        df_rend,
+                        column_config={
+                            "Lote": st.column_config.TextColumn("Lote", disabled=True),
+                            "Total Envasado (tn)": st.column_config.NumberColumn("Total Envasado (tn)", format="%.3f t", disabled=True),
+                            # MODIFICADO: step=0.001 y formato a 3 decimales
+                            "Total de descarga (tn)": st.column_config.NumberColumn(
+                                "Total de descarga (tn)", 
+                                format="%.3f t", 
+                                min_value=0.0, 
+                                step=0.001, 
+                                required=True
+                            ),
+                        },
+                        hide_index=True,
+                        use_container_width=True,
+                        key="editor_rendimiento"
+                    )
+                    
+                    # Botón de cálculo
+                    calcular_btn = st.form_submit_button("🔄 Calcular Rendimiento")
+
+                # 4. Cálculos y Resultados (Solo al presionar el botón)
+                if calcular_btn and not edited_df.empty:
+                    # Fórmula CORREGIDA: (Total Envasado / Total Descarga) * 100
+                    with np.errstate(divide='ignore', invalid='ignore'):
+                         edited_df['Rendimiento (%)'] = (edited_df['Total Envasado (tn)'] / edited_df['Total de descarga (tn)']) * 100
+                    
+                    edited_df['Rendimiento (%)'] = edited_df['Rendimiento (%)'].fillna(0.0)
+                    edited_df['Rendimiento (%)'] = edited_df['Rendimiento (%)'].replace([np.inf, -np.inf], 0.0)
+
+                    st.markdown("#### 📊 Resultados por Lote")
+                    
+                    st.dataframe(
+                        edited_df,
+                        column_config={
+                            "Lote": st.column_config.TextColumn("Lote"),
+                            "Total de descarga (tn)": st.column_config.NumberColumn("Total de descarga (tn)", format="%.3f t"),
+                            "Total Envasado (tn)": st.column_config.NumberColumn("Total Envasado (tn)", format="%.3f t"),
+                            "Rendimiento (%)": st.column_config.ProgressColumn(
+                                "Rendimiento (%)", 
+                                format="%.1f%%", 
+                                min_value=0, 
+                                max_value=100, 
+                            ), 
+                        },
+                        hide_index=True,
+                        use_container_width=True
+                    )
 
         # ==============================================================================
-        # PESTAÑA 2: TENDENCIAS HISTÓRICAS
+        # PESTAÑA 3: TENDENCIAS HISTÓRICAS
         # ==============================================================================
         with tab_historico:
             st.markdown("### 📈 Evolución de la Producción")
@@ -422,7 +517,7 @@ try:
 
 
         # ==============================================================================
-        # PESTAÑA 3: BASE DE DATOS
+        # PESTAÑA 4: BASE DE DATOS
         # ==============================================================================
         with tab_datos:
             st.header("Base de Datos de Registros")
@@ -471,6 +566,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
