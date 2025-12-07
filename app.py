@@ -13,7 +13,7 @@ import numpy as np # Importamos numpy para manejo seguro de divisiones
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Dashboard Pesca", layout="wide", initial_sidebar_state="collapsed")
 
-# --- ESTILOS CSS ---
+# --- ESTILOS CSS (INTACTOS) ---
 st.markdown("""
     <style>
         .main-title {
@@ -77,6 +77,7 @@ st.markdown("""
             color: #31333F !important;
         }
         
+        /* Regla para Selects y Inputs base (sin forzar el calendario global) */
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div,
         section[data-testid="stSidebar"] div[data-baseweb="base-input"] {
             background-color: white !important;
@@ -225,7 +226,8 @@ try:
         df_filtrado = df_raw[df_raw['Fecha_Filtro'] == fecha_seleccionada].copy()
 
         # --- TABS ---
-        tab_reporte, tab_rendimiento, tab_historico, tab_datos = st.tabs(["Reporte Diario", "Rendimiento Diario", "Tendencias Históricas", "Base de Datos"])
+        # Titulos cortos y sin emojis para mejor visualización en móviles
+        tab_reporte, tab_rendimiento, tab_historico, tab_datos = st.tabs(["Reporte", "Rendimiento", "Histórico", "Datos"])
 
         # ==============================================================================
         # PESTAÑA 1: REPORTE DIARIO
@@ -566,6 +568,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
