@@ -129,13 +129,13 @@ st.markdown("""
         }
 
         /* =========================================
-           6. AJUSTES MÓVILES (SOLICITADO)
+           6. AJUSTES MÓVILES
            ========================================= */
         @media (max-width: 640px) {
             .stTabs [data-baseweb="tab"] {
-                font-size: 12px !important; /* Letra más pequeña */
-                padding: 5px 10px !important; /* Menos espacio para que entren todos */
-                height: auto !important; /* Altura flexible */
+                font-size: 12px !important;
+                padding: 5px 10px !important;
+                height: auto !important;
             }
         }
     </style>
@@ -242,7 +242,6 @@ try:
         df_filtrado = df_raw[df_raw['Fecha_Filtro'] == fecha_seleccionada].copy()
 
         # --- TABS ---
-        # Titulos cortos y sin emojis para mejor visualización en móviles
         tab_reporte, tab_rendimiento, tab_historico, tab_datos = st.tabs(["Reporte", "Rendimiento", "Histórico", "Datos"])
 
         # ==============================================================================
@@ -317,13 +316,13 @@ try:
                 # Tablas Detalle
                 st.subheader("📋 Tablas de Detalle Global")
                 
-                # Configuración de columnas
+                # Configuración de columnas (NOMBRES ACTUALIZADOS)
                 config_tablas = {
-                    "Total Kilos": st.column_config.NumberColumn(format="%.1f kg"),
-                    "Total Toneladas": st.column_config.NumberColumn(format="%.2f t"),
-                    "Total Bandejas": st.column_config.NumberColumn(format="%.0f"),
+                    "Kg": st.column_config.NumberColumn(format="%.1f kg"),
+                    "Tn": st.column_config.NumberColumn(format="%.2f t"),
+                    "Bandejas": st.column_config.NumberColumn(format="%.0f"),
                     "Lote": st.column_config.TextColumn("N° Lote"),
-                    "N° Coches completos": st.column_config.NumberColumn("N° Coches completos", format="%.2f"), 
+                    "N° Coches": st.column_config.NumberColumn("N° Coches", format="%.2f"), 
                 }
                 
                 # --- TABLA 1: Resumen por Lote (Vertical) ---
@@ -333,9 +332,9 @@ try:
                     'Kilos Calc': 'sum',
                     'Toneladas Calc': 'sum'
                 }).reset_index()
-                resumen_lote['N° Coches completos'] = resumen_lote['Bandejas'] / 50
-                resumen_lote = resumen_lote[['Lote', 'N° Coches completos', 'Bandejas', 'Kilos Calc', 'Toneladas Calc']]
-                resumen_lote.columns = ['Lote', 'N° Coches completos', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
+                resumen_lote['N° Coches'] = resumen_lote['Bandejas'] / 50
+                resumen_lote = resumen_lote[['Lote', 'N° Coches', 'Bandejas', 'Kilos Calc', 'Toneladas Calc']]
+                resumen_lote.columns = ['Lote', 'N° Coches', 'Bandejas', 'Kg', 'Tn']
                 st.dataframe(resumen_lote, column_config=config_tablas, hide_index=True, use_container_width=True)
 
                 # --- TABLA 2: Resumen por Cuadrilla (Vertical, debajo de la anterior) ---
@@ -345,9 +344,9 @@ try:
                     'Kilos Calc': 'sum',
                     'Toneladas Calc': 'sum'
                 }).reset_index()
-                resumen_cuadrilla['N° Coches completos'] = resumen_cuadrilla['Bandejas'] / 50
-                resumen_cuadrilla = resumen_cuadrilla[['Cuadrilla', 'N° Coches completos', 'Bandejas', 'Kilos Calc', 'Toneladas Calc']]
-                resumen_cuadrilla.columns = ['Cuadrilla', 'N° Coches completos', 'Total Bandejas', 'Total Kilos', 'Total Toneladas']
+                resumen_cuadrilla['N° Coches'] = resumen_cuadrilla['Bandejas'] / 50
+                resumen_cuadrilla = resumen_cuadrilla[['Cuadrilla', 'N° Coches', 'Bandejas', 'Kilos Calc', 'Toneladas Calc']]
+                resumen_cuadrilla.columns = ['Cuadrilla', 'N° Coches', 'Bandejas', 'Kg', 'Tn']
                 config_cuadrilla = config_tablas.copy(); config_cuadrilla.pop("Lote", None) 
                 st.dataframe(resumen_cuadrilla, column_config=config_cuadrilla, hide_index=True, use_container_width=True)
                 
@@ -361,9 +360,10 @@ try:
                             st.markdown(f"#### 🏷️ Lote: {lote_actual}")
                             df_lote_especifico = df_filtrado[df_filtrado['Lote'] == lote_actual]
                             tabla_detalle = df_lote_especifico.groupby(['Producto', 'Calidad', 'Calibre'])[['Toneladas Calc']].sum().reset_index()
-                            tabla_detalle.columns = ['Producto', 'Calidad', 'Calibre', 'Total Toneladas']
+                            # CAMBIO: "Total Toneladas" -> "Toneladas"
+                            tabla_detalle.columns = ['Producto', 'Calidad', 'Calibre', 'Toneladas']
                             st.dataframe(
-                                tabla_detalle, column_config={"Total Toneladas": st.column_config.NumberColumn(format="%.2f t")},
+                                tabla_detalle, column_config={"Toneladas": st.column_config.NumberColumn(format="%.2f t")},
                                 hide_index=True, use_container_width=True
                             )
                             st.markdown("<br>", unsafe_allow_html=True)
