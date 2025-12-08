@@ -5,3 +5,5 @@ google-auth
 plotly
 xlsxwriter
 pytz
+streamlit-echarts
+numpy
