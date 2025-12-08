@@ -268,7 +268,9 @@ try:
                 
                 st.markdown("---")
 
-                # Timeline Scatter (PLOTLY)
+                # =======================================================
+                # TIMELINE SCATTER (REVERTIDO A PLOTLY)
+                # =======================================================
                 st.subheader("⏰ Actividad en Tiempo Real")
                 fig_timeline = px.scatter(
                     df_filtrado.sort_values("Marca temporal"),
@@ -281,7 +283,13 @@ try:
                 )
                 fig_timeline.update_traces(marker=dict(size=12, line=dict(width=1, color='DarkSlateGrey')))
                 fig_timeline.update_xaxes(tickformat="%H:%M", title_text="<b>Hora del Día</b>")
-                fig_timeline.update_yaxes(title_text="<b>Cuadrilla</b>")
+                
+                # REQUISITO: Etiquetas de cuadrillas verticales y ajustadas
+                fig_timeline.update_yaxes(
+                    title_text="<b>Cuadrilla</b>", 
+                    tickangle=-90,  # Rotación vertical
+                    automargin=True # Ajuste automático para que no se corten
+                )
                 
                 fig_timeline = estilo_grafico(fig_timeline)
                 fig_timeline.update_layout(
@@ -316,7 +324,6 @@ try:
                             "type": "bar",
                             "stack": "total", # BARRAS APILADAS
                             "data": clean_data,
-                            # Etiqueta adentro de la barra
                             "label": {"show": True, "position": "inside", "formatter": "{c}", "fontSize": 10, "fontWeight": "bold"},
                             "emphasis": {"focus": "series"}
                         })
@@ -325,7 +332,7 @@ try:
                         "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
                         "legend": {"data": products_cuadrilla, "bottom": 0, "type": "plain", "width": "90%", "left": "center"},
                         "grid": {
-                            "left": "10%", "right": "0%", "bottom": "20%", "containLabel": True,
+                            "left": "10%", "right": "5%", "bottom": "20%", "containLabel": True, 
                             "show": True, "borderColor": "#000000", "borderWidth": 1
                         },
                         "xAxis": [{
@@ -333,6 +340,7 @@ try:
                             "name": "Toneladas (t)", 
                             "nameLocation": "middle",
                             "nameGap": 30,
+                            "minInterval": 1, 
                             "axisLabel": {"fontWeight": "bold"},
                             "nameTextStyle": {"fontWeight": "bold"}
                         }],
@@ -343,7 +351,6 @@ try:
                             "nameLocation": "end",
                             "nameGap": 10,
                             "axisTick": {"alignWithLabel": True},
-                            # CORRECCIÓN: "interval": 0 para mostrar TODAS las cuadrillas
                             "axisLabel": {"fontWeight": "bold", "rotate": 90, "interval": 0},
                             "nameTextStyle": {"fontWeight": "bold"}
                         }],
@@ -378,7 +385,7 @@ try:
                         "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
                         "legend": {"data": products_lote, "bottom": 0, "type": "plain", "width": "90%", "left": "center"},
                         "grid": {
-                            "left": "10%", "right": "0%", "bottom": "20%", "containLabel": True,
+                            "left": "10%", "right": "5%", "bottom": "20%", "containLabel": True, 
                             "show": True, "borderColor": "#000000", "borderWidth": 1
                         },
                         "xAxis": [{
@@ -386,6 +393,7 @@ try:
                             "name": "Toneladas (t)", 
                             "nameLocation": "middle",
                             "nameGap": 30,
+                            "minInterval": 1, 
                             "axisLabel": {"fontWeight": "bold"},
                             "nameTextStyle": {"fontWeight": "bold"}
                         }],
@@ -396,7 +404,6 @@ try:
                             "nameLocation": "end",
                             "nameGap": 10,
                             "axisTick": {"alignWithLabel": True}, 
-                            # CORRECCIÓN: "interval": 0 para mostrar TODOS los lotes
                             "axisLabel": {"interval": 0, "rotate": 0, "fontWeight": "bold"},
                             "nameTextStyle": {"fontWeight": "bold"}
                         }],
