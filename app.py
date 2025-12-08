@@ -5,10 +5,11 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta
 import pytz
 import plotly.express as px
+from streamlit_echarts import st_echarts # LIBRERÍA ECHARTS AGREGADA
 import json
 import os
 import io
-import numpy as np # Importamos numpy para manejo seguro de divisiones
+import numpy as np 
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Dashboard Pesca", layout="wide", initial_sidebar_state="collapsed")
@@ -143,7 +144,7 @@ st.markdown("""
     <hr style='border: 2px solid #004080; border-radius: 5px;'>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN DE ESTILO DE GRÁFICOS ---
+# --- FUNCIÓN DE ESTILO DE GRÁFICOS (PLOTLY) ---
 def estilo_grafico(fig):
     fig.update_layout(
         plot_bgcolor='white',
@@ -267,7 +268,7 @@ try:
                 
                 st.markdown("---")
 
-                # Timeline Scatter
+                # Timeline Scatter (PLOTLY)
                 st.subheader("⏰ Actividad en Tiempo Real")
                 fig_timeline = px.scatter(
                     df_filtrado.sort_values("Marca temporal"),
@@ -290,42 +291,133 @@ try:
                 st.plotly_chart(fig_timeline, use_container_width=True)
                 st.markdown("---")
                 
-                # Barras
+                # =======================================================
+                # BARRAS CON ECHARTS (AGRUPADAS Y APILADAS)
+                # =======================================================
                 col_graf1, col_graf2 = st.columns(2)
+                
                 with col_graf1:
                     st.subheader("🏭 Toneladas por Cuadrilla")
-                    df_cuadrilla = df_filtrado.groupby(['Cuadrilla', 'Producto'])[['Toneladas Calc']].sum().reset_index()
-                    fig_cuadrilla = px.bar(df_cuadrilla, x="Cuadrilla", y="Toneladas Calc", color="Producto", barmode='group',
-                        labels={"Toneladas Calc": "<b>Toneladas (t)</b>", "Cuadrilla": "<b>Cuadrilla</b>"},
-                        color_discrete_sequence=px.colors.qualitative.Pastel, text_auto='.2f')
-                    fig_cuadrilla.update_traces(textfont_weight='bold')
-                    st.plotly_chart(estilo_grafico(fig_cuadrilla), use_container_width=True)
+                    # Pivotamos
+                    df_cuadrilla_prod = df_filtrado.groupby(['Cuadrilla', 'Producto'])['Toneladas Calc'].sum().reset_index()
+                    df_piv_cuadrilla = df_cuadrilla_prod.pivot(index='Cuadrilla', columns='Producto', values='Toneladas Calc').fillna(0)
+                    
+                    x_axis_cuadrilla = df_piv_cuadrilla.index.tolist()
+                    products_cuadrilla = df_piv_cuadrilla.columns.tolist()
+                    
+                    # Creamos series APILADAS (stack: 'total')
+                    series_cuadrilla = []
+                    for product in products_cuadrilla:
+                        raw_data = df_piv_cuadrilla[product].round(1).tolist()
+                        clean_data = [x if x > 0 else None for x in raw_data]
+                        
+                        series_cuadrilla.append({
+                            "name": product,
+                            "type": "bar",
+                            "stack": "total", # BARRAS APILADAS
+                            "data": clean_data,
+                            # Etiqueta adentro de la barra
+                            "label": {"show": True, "position": "inside", "formatter": "{c}", "fontSize": 10, "fontWeight": "bold"},
+                            "emphasis": {"focus": "series"}
+                        })
+                    
+                    opt_cuadrilla = {
+                        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+                        "legend": {"data": products_cuadrilla, "bottom": 0, "type": "plain", "width": "90%", "left": "center"},
+                        "grid": {
+                            "left": "10%", "right": "0%", "bottom": "20%", "containLabel": True,
+                            "show": True, "borderColor": "#000000", "borderWidth": 1
+                        },
+                        "xAxis": [{
+                            "type": "value", 
+                            "name": "Toneladas (t)", 
+                            "nameLocation": "middle",
+                            "nameGap": 30,
+                            "axisLabel": {"fontWeight": "bold"},
+                            "nameTextStyle": {"fontWeight": "bold"}
+                        }],
+                        "yAxis": [{
+                            "type": "category", 
+                            "data": x_axis_cuadrilla, 
+                            "name": "Cuadrilla", 
+                            "nameLocation": "end",
+                            "nameGap": 10,
+                            "axisTick": {"alignWithLabel": True},
+                            # CORRECCIÓN: "interval": 0 para mostrar TODAS las cuadrillas
+                            "axisLabel": {"fontWeight": "bold", "rotate": 90, "interval": 0},
+                            "nameTextStyle": {"fontWeight": "bold"}
+                        }],
+                        "series": series_cuadrilla
+                    }
+                    st_echarts(options=opt_cuadrilla, height="350px")
                     
                 with col_graf2:
                     st.subheader("📦 Toneladas por Lote")
-                    df_lote = df_filtrado.groupby(['Lote', 'Producto'])[['Toneladas Calc']].sum().reset_index()
-                    fig_lote = px.bar(df_lote, x="Lote", y="Toneladas Calc", color="Producto", barmode='group',
-                        labels={"Toneladas Calc": "<b>Toneladas (t)</b>", "Lote": "<b>N° Lote</b>"},
-                        color_discrete_sequence=px.colors.qualitative.Pastel, text_auto='.2f')
-                    fig_lote.update_traces(textfont_weight='bold')
-                    fig_lote.update_xaxes(type='category', title="<b>N° Lote</b>")
-                    st.plotly_chart(estilo_grafico(fig_lote), use_container_width=True)
+                    # Pivotamos
+                    df_lote_prod = df_filtrado.groupby(['Lote', 'Producto'])['Toneladas Calc'].sum().reset_index()
+                    df_piv_lote = df_lote_prod.pivot(index='Lote', columns='Producto', values='Toneladas Calc').fillna(0)
+                    
+                    x_axis_lote = df_piv_lote.index.tolist()
+                    products_lote = df_piv_lote.columns.tolist()
+                    
+                    series_lote = []
+                    for product in products_lote:
+                        raw_data = df_piv_lote[product].round(1).tolist()
+                        clean_data = [x if x > 0 else None for x in raw_data]
+                        
+                        series_lote.append({
+                            "name": product,
+                            "type": "bar",
+                            "stack": "total", # BARRAS APILADAS
+                            "data": clean_data,
+                            "label": {"show": True, "position": "inside", "formatter": "{c}", "fontSize": 10, "fontWeight": "bold"},
+                            "emphasis": {"focus": "series"}
+                        })
+                    
+                    opt_lote = {
+                        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+                        "legend": {"data": products_lote, "bottom": 0, "type": "plain", "width": "90%", "left": "center"},
+                        "grid": {
+                            "left": "10%", "right": "0%", "bottom": "20%", "containLabel": True,
+                            "show": True, "borderColor": "#000000", "borderWidth": 1
+                        },
+                        "xAxis": [{
+                            "type": "value", 
+                            "name": "Toneladas (t)", 
+                            "nameLocation": "middle",
+                            "nameGap": 30,
+                            "axisLabel": {"fontWeight": "bold"},
+                            "nameTextStyle": {"fontWeight": "bold"}
+                        }],
+                        "yAxis": [{
+                            "type": "category", 
+                            "data": x_axis_lote,
+                            "name": "N° Lote", 
+                            "nameLocation": "end",
+                            "nameGap": 10,
+                            "axisTick": {"alignWithLabel": True}, 
+                            # CORRECCIÓN: "interval": 0 para mostrar TODOS los lotes
+                            "axisLabel": {"interval": 0, "rotate": 0, "fontWeight": "bold"},
+                            "nameTextStyle": {"fontWeight": "bold"}
+                        }],
+                        "series": series_lote
+                    }
+                    st_echarts(options=opt_lote, height="350px")
 
                 st.markdown("---")
 
                 # Tablas Detalle
                 st.subheader("📋 Tablas de Detalle Global")
                 
-                # Configuración de columnas (SIN UNIDADES PARA Kg y Tn)
                 config_tablas = {
-                    "Kg": st.column_config.NumberColumn(format="%.1f"), # Sin " kg"
-                    "Tn": st.column_config.NumberColumn(format="%.2f"), # Sin " t"
+                    "Kg": st.column_config.NumberColumn(format="%.1f"), 
+                    "Tn": st.column_config.NumberColumn(format="%.2f"), 
                     "Bandejas": st.column_config.NumberColumn(format="%.0f"),
                     "Lote": st.column_config.TextColumn("N° Lote"),
                     "N° Coches": st.column_config.NumberColumn("N° Coches", format="%.2f"), 
                 }
                 
-                # --- TABLA 1: Resumen por Lote (Vertical) ---
+                # --- TABLA 1: Resumen por Lote ---
                 st.markdown("##### 📦 Resumen por Lote")
                 resumen_lote = df_filtrado.groupby('Lote').agg({
                     'Bandejas': 'sum',
@@ -337,7 +429,7 @@ try:
                 resumen_lote.columns = ['Lote', 'N° Coches', 'Bandejas', 'Kg', 'Tn']
                 st.dataframe(resumen_lote, column_config=config_tablas, hide_index=True, use_container_width=True)
 
-                # --- TABLA 2: Resumen por Cuadrilla (Vertical) ---
+                # --- TABLA 2: Resumen por Cuadrilla ---
                 st.markdown("##### 👷 Resumen por Cuadrilla")
                 resumen_cuadrilla = df_filtrado.groupby('Cuadrilla').agg({
                     'Bandejas': 'sum',
@@ -354,7 +446,6 @@ try:
                 st.subheader("🧩 Detalle de Productos por Lote")
                 lotes_unicos = sorted(df_filtrado['Lote'].unique())
                 if len(lotes_unicos) > 0:
-                    # MODIFICACIÓN: Tablas una debajo de otra (eliminada la división en st.columns(2))
                     for lote_actual in lotes_unicos:
                         st.markdown(f"#### 🏷️ Lote: {lote_actual}")
                         df_lote_especifico = df_filtrado[df_filtrado['Lote'] == lote_actual]
@@ -377,7 +468,6 @@ try:
             else:
                 # 1. Preparar Datos Base
                 df_rend = df_filtrado.groupby('Lote')[['Toneladas Calc']].sum().reset_index()
-                # Nombres de columna actualizados
                 df_rend.columns = ['Lote', 'Envasado (tn)']
                 
                 # 2. Inicializar columna de Descarga vacía (0.0)
@@ -389,14 +479,13 @@ try:
 
                 st.info("📝 Ingresa los valores de 'Descarga (tn)' y presiona el botón para calcular.")
                 
-                # 3. Formulario para evitar recargas constantes
+                # 3. Formulario
                 with st.form("calculo_rendimiento_form"):
                     edited_df = st.data_editor(
                         df_rend,
                         column_config={
                             "Lote": st.column_config.TextColumn("Lote", disabled=True),
                             "Envasado (tn)": st.column_config.NumberColumn("Envasado (tn)", format="%.3f t", disabled=True),
-                            # MODIFICADO: step=0.001 y formato a 3 decimales
                             "Descarga (tn)": st.column_config.NumberColumn(
                                 "Descarga (tn)", 
                                 format="%.3f t", 
@@ -413,9 +502,8 @@ try:
                     # Botón de cálculo
                     calcular_btn = st.form_submit_button("🔄 Calcular Rendimiento")
 
-                # 4. Cálculos y Resultados (Solo al presionar el botón)
+                # 4. Cálculos y Resultados
                 if calcular_btn and not edited_df.empty:
-                    # Fórmula: (Total Envasado / Total Descarga) * 100
                     with np.errstate(divide='ignore', invalid='ignore'):
                          edited_df['Rendimiento (%)'] = (edited_df['Envasado (tn)'] / edited_df['Descarga (tn)']) * 100
                     
@@ -430,7 +518,6 @@ try:
                             "Lote": st.column_config.TextColumn("Lote"),
                             "Descarga (tn)": st.column_config.NumberColumn("Descarga (tn)", format="%.3f t"),
                             "Envasado (tn)": st.column_config.NumberColumn("Envasado (tn)", format="%.3f t"),
-                            # MODIFICACIÓN: Ahora NumberColumn en lugar de ProgressColumn, mostrando solo el porcentaje
                             "Rendimiento (%)": st.column_config.NumberColumn(
                                 "Rendimiento (%)", 
                                 format="%.1f%%"
@@ -552,6 +639,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
+
 
 
 
